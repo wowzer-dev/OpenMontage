@@ -118,6 +118,13 @@ const PageRenderer: React.FC<{
                   // previous behavior; for CJK it prevents mid-word breaks.
                   display: "inline-block",
                   whiteSpace: "nowrap",
+                  // A trailing text-space inside an inline-block collapses at
+                  // its boundary. Use an explicit CSS gap so English words
+                  // cannot render as "oneof" while CJK can still opt out.
+                  marginRight:
+                    i < page.words.length - 1 && wordSeparator === " "
+                      ? "0.28em"
+                      : 0,
                   color: isActive ? highlightColor : isPast ? color : `${color}99`,
                   transition: "none", // CSS transitions forbidden in Remotion
                   textShadow: isActive
@@ -125,7 +132,7 @@ const PageRenderer: React.FC<{
                     : "0 2px 4px rgba(0,0,0,0.5)",
                 }}
               >
-                {w.word}{i < page.words.length - 1 ? wordSeparator : ""}
+                {w.word}
               </span>
             );
           })}

@@ -1,11 +1,13 @@
 import {
   AbsoluteFill,
+  CalculateMetadataFunction,
   OffthreadVideo,
   Sequence,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
+import { getVideoMetadata } from "@remotion/media-utils";
 import { CaptionOverlay, WordCaption } from "./components/CaptionOverlay";
 import { resolveAsset } from "./lib/resolveAsset";
 import { TextCard } from "./components/TextCard";
@@ -300,6 +302,8 @@ export interface TalkingHeadProps {
   videoSrc: string;
   captions: WordCaption[];
   overlays?: TalkingHeadOverlay[];
+  transitions?: TalkingHeadTransition[];
+  durationSeconds?: number;
   wordsPerPage?: number;
   fontSize?: number;
   highlightColor?: string;
@@ -310,10 +314,52 @@ export interface TalkingHeadProps {
   captionWordSeparator?: string;
 }
 
+export interface TalkingHeadTransition {
+  type: "fade_through_black";
+  at_seconds: number;
+  duration_seconds: number;
+}
+
+const FadeThroughBlack: React.FC<{ transition: TalkingHeadTransition }> = ({
+  transition,
+}) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const center = transition.at_seconds * fps;
+  const halfDuration = Math.max(1, (transition.duration_seconds * fps) / 2);
+  const opacity = interpolate(
+    frame,
+    [center - halfDuration, center, center + halfDuration],
+    [0, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+  );
+
+  return <AbsoluteFill style={{ backgroundColor: "#000", opacity }} />;
+};
+
+export const calculateTalkingHeadMetadata: CalculateMetadataFunction<
+  TalkingHeadProps
+> = async ({ props }) => {
+  if (props.durationSeconds && props.durationSeconds > 0) {
+    return {
+      durationInFrames: Math.max(1, Math.round(props.durationSeconds * 30)),
+    };
+  }
+  try {
+    const meta = await getVideoMetadata(resolveAsset(props.videoSrc));
+    return {
+      durationInFrames: Math.max(1, Math.round(meta.durationInSeconds * 30)),
+    };
+  } catch {
+    return { durationInFrames: 30 * 60 };
+  }
+};
+
 export const TalkingHead: React.FC<TalkingHeadProps> = ({
   videoSrc,
   captions,
   overlays,
+  transitions = [],
   wordsPerPage = 4,
   fontSize = 52,
   highlightColor = "#22D3EE",
@@ -349,7 +395,14 @@ export const TalkingHead: React.FC<TalkingHeadProps> = ({
         );
       })}
 
-      {/* Layer 3: Captions (topmost — always visible above overlays) */}
+      {/* Layer 3: approved fades over the continuous source clip. */}
+      {transitions
+        .filter((transition) => transition.type === "fade_through_black")
+        .map((transition, i) => (
+          <FadeThroughBlack key={`${transition.at_seconds}-${i}`} transition={transition} />
+        ))}
+
+      {/* Layer 4: Captions (topmost — always visible above overlays) */}
       <CaptionOverlay
         words={captions}
         wordsPerPage={wordsPerPage}

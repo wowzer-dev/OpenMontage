@@ -264,6 +264,15 @@ class RemotionCaptionBurn(BaseTool):
     #  Remotion render
     # ------------------------------------------------------------------ #
 
+    @staticmethod
+    def _first_nonempty_line(output: str) -> str:
+        """Return the first probe value, tolerating duplicate/blank lines."""
+        for line in output.splitlines():
+            value = line.strip()
+            if value:
+                return value
+        raise ValueError("ffprobe returned no value")
+
     def _render_remotion(
         self,
         input_path: str,
@@ -287,7 +296,7 @@ class RemotionCaptionBurn(BaseTool):
         ]
         dur_result = self.run_command(dur_cmd)
         dur_out = dur_result.stdout
-        duration_s = float(dur_out.strip().split("\n")[0])
+        duration_s = float(self._first_nonempty_line(dur_out))
         total_frames = math.ceil(duration_s * 30)
 
         # Detect video dimensions
@@ -299,7 +308,7 @@ class RemotionCaptionBurn(BaseTool):
             input_path,
         ]
         dim_result = self.run_command(dim_cmd)
-        dim_parts = dim_result.stdout.strip().split("x")
+        dim_parts = self._first_nonempty_line(dim_result.stdout).split("x")
         width = int(dim_parts[0])
         height = int(dim_parts[1])
 
@@ -312,7 +321,7 @@ class RemotionCaptionBurn(BaseTool):
 
         # Build props JSON
         props = {
-            "videoSrc": f"public/talking-head/{video_filename}",
+            "videoSrc": f"talking-head/{video_filename}",
             "captions": captions,
             "overlays": overlays or [],
             "wordsPerPage": words_per_page,

@@ -5,7 +5,11 @@ import {
   calculateCinematicMetadata,
 } from "./CinematicRenderer";
 import { signalFromTomorrowWithMusicFixture } from "./cinematic/fixtures";
-import { TalkingHead, TalkingHeadProps } from "./TalkingHead";
+import {
+  TalkingHead,
+  TalkingHeadProps,
+  calculateTalkingHeadMetadata,
+} from "./TalkingHead";
 import {
   TitledVideo,
   calculateTitledVideoMetadata,
@@ -190,6 +194,7 @@ export const Root: React.FC = () => {
           fontSize: 52,
           highlightColor: "#22D3EE",
         }}
+        calculateMetadata={calculateTalkingHeadMetadata}
       />
       <Composition
         id="TitledVideo"
